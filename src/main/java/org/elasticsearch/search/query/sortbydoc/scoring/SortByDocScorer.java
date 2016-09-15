@@ -12,66 +12,61 @@ import java.util.Map;
  * 23/10/15, 15:18
  */
 class SortByDocScorer extends Scorer {
-    private final Scorer scorer;
     private final DocIdSetIterator iterator;
     private Map<Integer, Float> scores;
 
-    public SortByDocScorer(Scorer scorer, Map<Integer, Float> scores, Weight weight) {
+    public SortByDocScorer(Map<Integer, Float> scores, DocIdSetIterator iterator, Weight weight) {
         super(weight);
-        this.scorer = scorer;
         this.scores = scores;
-        this.iterator = scorer.iterator();
-    }
-
-    @Override
-    public int docID() {
-        return scorer.docID();
+        this.iterator = iterator;
     }
 
     @Override
     public DocIdSetIterator iterator() {
+
         return new DocIdSetIterator() {
             @Override
             public int docID() {
-                return 0;
+                return iterator.docID();
             }
 
             @Override
             public int nextDoc() throws IOException {
-                while (true) {
-                    if (scorer == null)
-                        return NO_MORE_DOCS;
-                    int docId = iterator.nextDoc();
-                    if (docId == NO_MORE_DOCS)
-                        return NO_MORE_DOCS;
+                // retrieve the next document indluded in the scores
+                int docId;
+                while ((docId = iterator.nextDoc()) != NO_MORE_DOCS) {
                     if (scores.containsKey(docId)) {
                         return docId;
                     }
                 }
+                return NO_MORE_DOCS;
             }
 
             @Override
             public int advance(int target) throws IOException {
-                if (scorer == null)
-                    return NO_MORE_DOCS;
                 int docId = iterator.advance(target);
-                if (docId == NO_MORE_DOCS)
-                    return NO_MORE_DOCS;
-                // We advanced, but if the document was not in our score set (for whatever reason)
-                // then we go to the next valid document by calling nextDoc
-                if (scores.containsKey(docId))
-                    return docId;
-                return nextDoc();
+                if (docId != NO_MORE_DOCS) {
+                    // We advanced, but if the document was not in our score set (for whatever reason)
+                    // then we go to the next valid document by calling nextDoc
+                    if (scores.containsKey(docId))
+                        return docId;
+                    return nextDoc();
+                }
+                return NO_MORE_DOCS;
             }
 
             @Override
             public long cost() {
-                if (scorer == null)
-                    return 0;
-                return iterator().cost();
+                return iterator.cost();
             }
         };
     }
+
+    @Override
+    public int docID() {
+        return iterator.docID();
+    }
+
 
     @Override
     public int freq() throws IOException {
@@ -80,8 +75,7 @@ class SortByDocScorer extends Scorer {
 
     @Override
     public float score() throws IOException {
-        if (scorer == null)
-            return 0;
-        return scores.get(scorer.docID());
+        Float value = scores.get(docID());
+        return value == null ? 0 : value;
     }
 }

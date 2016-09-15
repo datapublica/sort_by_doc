@@ -1,6 +1,5 @@
 package org.elasticsearch.search.query.sortbydoc.utils;
 
-import org.elasticsearch.common.HasContextAndHeaders;
 import org.elasticsearch.common.Nullable;
 import org.elasticsearch.index.query.QueryParseContext;
 
@@ -19,9 +18,8 @@ public class ScoresLookup {
 
     @Nullable
     private final QueryParseContext queryParseContext;
-    private HasContextAndHeaders hasContextAndHeaders;
 
-    public ScoresLookup(String index, String type, String id, String routing, String objectPath, String keyField, String valField, @Nullable QueryParseContext queryParseContext, HasContextAndHeaders hasContextAndHeaders) {
+    public ScoresLookup(String index, String type, String id, String routing, String objectPath, String keyField, String valField, @Nullable QueryParseContext queryParseContext) {
         this.index = index;
         this.type = type;
         this.id = id;
@@ -30,7 +28,6 @@ public class ScoresLookup {
         this.keyField = keyField;
         this.valField = valField;
         this.queryParseContext = queryParseContext;
-        this.hasContextAndHeaders = hasContextAndHeaders;
     }
 
     public String getIndex() {
@@ -58,10 +55,6 @@ public class ScoresLookup {
     }
 
     public String getObjectPath() { return objectPath; }
-
-    public HasContextAndHeaders getHasContextAndHeaders() {
-        return hasContextAndHeaders;
-    }
 
     @Nullable
     public QueryParseContext getQueryParseContext() {

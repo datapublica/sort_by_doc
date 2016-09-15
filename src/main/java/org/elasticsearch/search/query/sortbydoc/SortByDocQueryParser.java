@@ -18,10 +18,13 @@
  */
 package org.elasticsearch.search.query.sortbydoc;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
+import org.elasticsearch.action.get.GetRequest;
+import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.index.mapper.MappedFieldType;
@@ -32,10 +35,11 @@ import org.elasticsearch.index.query.QueryParser;
 import org.elasticsearch.index.query.QueryParsingException;
 import org.elasticsearch.search.internal.SearchContext;
 import org.elasticsearch.search.query.sortbydoc.utils.ScoresLookup;
-import org.elasticsearch.search.query.sortbydoc.utils.ScoringDocumentCache;
+import org.elasticsearch.search.query.sortbydoc.utils.XContentGetScoreMap;
 import org.elasticsearch.search.sort.SortOrder;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -57,20 +61,17 @@ import java.util.Map;
  */
 public class SortByDocQueryParser implements QueryParser {
     public static final String NAME = "sort_by_doc";
-    private ScoringDocumentCache scoringDocumentCache;
+
+    private Client client;
 
     @Inject
-    public SortByDocQueryParser() {
+    public SortByDocQueryParser(Client client) {
+        this.client = client;
     }
 
     @Override
     public String[] names() {
         return new String[]{NAME};
-    }
-
-    @Inject(optional = true)
-    public void setScoringDocumentCache(ScoringDocumentCache scoringDocumentCache) {
-        this.scoringDocumentCache = scoringDocumentCache;
     }
 
     @Override
@@ -146,47 +147,44 @@ public class SortByDocQueryParser implements QueryParser {
             throw new QueryParsingException(parseContext, "[sort_by_doc] query requires a subquery");
         }
 
-        String fieldName = "_id";
-        MappedFieldType _idType = parseContext.mapperService().smartNameFieldType(fieldName);
+        MappedFieldType _idType = parseContext.mapperService().smartNameFieldType(idField);
 
-        /*
-        FieldMapper fieldMapper = null;
-        smartNameFieldMappers = parseContext.mapperService().smartFieldMappers(fieldName);
-        if (smartNameFieldMappers != null) {
-            if (smartNameFieldMappers.hasMapper()) {
-                fieldMapper = smartNameFieldMappers.mapper();
-                fieldName = fieldMapper.names().indexName();
-            }
-        }
-        */
-
-        /*
-        if (fieldMapper == null || !(fieldMapper instanceof IdFieldMapper))
-            throw new QueryParsingException(parseContext.index(), "[sort_by_doc] the _id field must be a defaultly indexed UID field");
-        */
-
-        if (_idType == null)
+        if (_idType == null || _idType.indexOptions() == IndexOptions.NONE)
             throw new QueryParsingException(parseContext, "[sort_by_doc] the _id field must be a defaultly indexed UID field");
 
-        // external lookup, use it
-        ScoresLookup scoresLookup = new ScoresLookup(lookupIndex, lookupType, lookupId, lookupRouting, rootPath, idField, scoreField, parseContext, SearchContext.current());
-        ImmutableMap<String, Float> scores = scoringDocumentCache.getScores(scoresLookup);
-        Map<Term, Float> termsScores = new HashMap<>();
-        for (Map.Entry<String, Float> score : scores.entrySet()) {
-            Uid.createUidsForTypesAndId(parseContext.queryTypes(), score.getKey());
-            BytesRef[] keyUids = Uid.createUidsForTypesAndId(parseContext.queryTypes(), score.getKey());
-            for (BytesRef keyUid : keyUids) {
-                Term t = new Term(UidFieldMapper.NAME, keyUid);
-                termsScores.put(t, sortOrder.equals(SortOrder.DESC) ? score.getValue() : -score.getValue());
-            }
-        }
 
+        // external lookup of score values
+        ScoresLookup lookup = new ScoresLookup(lookupIndex, lookupType, lookupId, lookupRouting, rootPath, idField, scoreField, parseContext);
+        GetRequest request = new GetRequest(lookup.getIndex(), lookup.getType(), lookup.getId()).preference("_local").routing(lookup.getRouting());
+        request.copyContextAndHeadersFrom(SearchContext.current());
+
+        GetResponse getResponse = client.get(request).actionGet();
+
+        // ids => scores
+        Map<String, Float> scores = new HashMap<>();
+        // Uid => scores
+        Map<Term, Float> termsScores = new HashMap<>();
+
+        if (getResponse.isExists()) {
+            scores = XContentGetScoreMap.extractMap(getResponse.getSourceAsMap(), lookup.getObjectPath(), lookup.getKeyField(), lookup.getValField());
+            if (scores == null) scores = new HashMap<>();
+            final boolean isDesc = sortOrder.equals(SortOrder.DESC);
+            scores.entrySet().forEach(score -> {
+                BytesRef[] keyUids = Uid.createUidsForTypesAndId(parseContext.queryTypes(), score.getKey());
+                for (BytesRef keyUid : keyUids) {
+                    Term key = new Term(UidFieldMapper.NAME, keyUid);
+                    termsScores.put(key, isDesc ? score.getValue() : -score.getValue());
+                }
+            });
+        }
         if (scores.isEmpty()) {
             return subQuery;
         }
 
-        Query filter = _idType.termsQuery(scores.keySet().asList(), parseContext);
+        // filter to only keep elements referenced in the lookup document
+        Query filter = _idType.termsQuery(new ArrayList<>(scores.keySet()), parseContext);
 
-        return new SortByDocQuery(fieldName, subQuery, filter, termsScores);
+        return new SortByDocQuery(idField, subQuery, filter, termsScores);
     }
+
 }
