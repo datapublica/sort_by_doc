@@ -13,7 +13,20 @@
             <excludes>
                 <exclude>org.elasticsearch:elasticsearch</exclude>
             </excludes>
+
         </dependencySet>
     </dependencySets>
+    <fileSets>
+        <fileSet>
+            <outputDirectory>/</outputDirectory>
+            <useDefaultExcludes>false</useDefaultExcludes>
+            <excludes>
+                <exclude>**/target/**</exclude>
+            </excludes>
+            <includes>
+                <include>plugin-descriptor.properties</include>
+            </includes>
+        </fileSet>
+    </fileSets>
 </assembly>
 
