@@ -29,6 +29,7 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.index.mapper.MappedFieldType;
 import org.elasticsearch.index.mapper.Uid;
+import org.elasticsearch.index.mapper.internal.IdFieldMapper;
 import org.elasticsearch.index.mapper.internal.UidFieldMapper;
 import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.index.query.QueryParser;
@@ -147,9 +148,10 @@ public class SortByDocQueryParser implements QueryParser {
             throw new QueryParsingException(parseContext, "[sort_by_doc] query requires a subquery");
         }
 
-        MappedFieldType _idType = parseContext.mapperService().smartNameFieldType(idField);
+        MappedFieldType _idType = parseContext.mapperService().smartNameFieldType("_id");
 
-        if (_idType == null || _idType.indexOptions() == IndexOptions.NONE)
+
+        if (_idType == null || !(_idType.typeName().equals(IdFieldMapper.CONTENT_TYPE)))
             throw new QueryParsingException(parseContext, "[sort_by_doc] the _id field must be a defaultly indexed UID field");
 
 
@@ -184,7 +186,7 @@ public class SortByDocQueryParser implements QueryParser {
         // filter to only keep elements referenced in the lookup document
         Query filter = _idType.termsQuery(new ArrayList<>(scores.keySet()), parseContext);
 
-        return new SortByDocQuery(idField, subQuery, filter, termsScores);
+        return new SortByDocQuery(_idType.names().indexName(), subQuery, filter, termsScores);
     }
 
 }
