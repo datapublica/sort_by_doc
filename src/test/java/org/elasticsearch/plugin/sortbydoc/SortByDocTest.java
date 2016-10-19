@@ -13,12 +13,14 @@ import org.elasticsearch.common.util.concurrent.EsExecutors;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.TermQueryBuilder;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.internal.InternalSettingsPreparer;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.search.query.sortbydoc.SortByDocQueryBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -32,14 +34,18 @@ public class SortByDocTest {
     private final Client client = newNode().client();
 
 
-    @Test
-    public void testIndexFetch() throws Exception {
+    @Before
+    public void clean() {
         try {
             DeleteIndexResponse delete = client.admin().indices().prepareDelete("_all").execute().actionGet();
         } catch (IndexNotFoundException e) {
             //ignore
         }
+    }
 
+
+    @Test
+    public void testIndexFetch() throws Exception {
         indexObject(new E("1", "A"));
         indexObject(new E("2", "A"));
         indexObject(new E("3", "C"));
@@ -100,6 +106,39 @@ public class SortByDocTest {
         Assert.assertEquals(1, test4.getHits().getTotalHits());
     }
 
+
+    @Test
+    public void testIndexFetchWithSubquery() throws Exception {
+        indexObject(new E("1", "A"));
+        indexObject(new E("2", "A"));
+        indexObject(new E("3", "C"));
+        indexObject(new L("l1", Arrays.asList(new LE("1", 1), new LE("2", 3), new LE("3", 2))));
+        client.admin().indices().prepareRefresh(index).execute().actionGet();
+
+        TermQueryBuilder onlyTypeA = QueryBuilders.termQuery("type", "a"); //
+        final SearchResponse test = client.prepareSearch(index).setTypes(E.TYPE).setQuery(onlyTypeA).execute().actionGet();
+        Assert.assertEquals(2, test.getHits().getTotalHits());
+
+
+        // Sort by doc on score ASC
+        SortByDocQueryBuilder builder = new SortByDocQueryBuilder()
+                .query(onlyTypeA)
+                .lookupIndex(index)
+                .lookupType(L.TYPE)
+                .lookupId("l1")
+                .idField("id")
+                .sortOrder(SortOrder.ASC)
+                .rootPath("elements")
+                .scoreField("score");
+
+        final SearchResponse test2 = client.prepareSearch(index).setTypes(E.TYPE).setQuery(builder).execute().actionGet();
+        Assert.assertEquals(2, test2.getHits().getTotalHits());
+
+        Assert.assertEquals("1", test2.getHits().getHits()[0].getSource().get("id"));
+        Assert.assertEquals("2", test2.getHits().getHits()[1].getSource().get("id"));
+
+    }
+
     private void indexObject(E o) throws JsonProcessingException {
         String source = objectMapper.writeValueAsString(o);
         client.prepareIndex(index, o.getClass().getSimpleName(), o.id).setSource(source).execute().actionGet();
@@ -149,7 +188,7 @@ public class SortByDocTest {
         String name = "junit-sbd";
         Settings settings = Settings.settingsBuilder()
                 .put("http.enabled", false)
-                .put(IndexMetaData.SETTING_NUMBER_OF_SHARDS, 1)
+                .put(IndexMetaData.SETTING_NUMBER_OF_SHARDS, 2)
                 .put(IndexMetaData.SETTING_NUMBER_OF_REPLICAS, 0)
                 .put(EsExecutors.PROCESSORS, 1) // limit the number of threads created
                 .put("config.ignore_system_properties", true) // make sure we get what we set :)
