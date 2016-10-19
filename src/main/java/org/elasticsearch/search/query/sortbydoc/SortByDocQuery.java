@@ -30,6 +30,12 @@ public class SortByDocQuery extends Query {
         this.scores = scores;
     }
 
+    private SortByDocQuery(Query subQuery, String fieldName, Map<Term, Float> scores) {
+        this.subQuery = subQuery;
+        this.fieldName = fieldName;
+        this.scores = scores;
+    }
+
     @Override
     public Query rewrite(IndexReader reader) throws IOException {
         Query newSubQuery = subQuery.rewrite(reader);
@@ -42,7 +48,7 @@ public class SortByDocQuery extends Query {
 
     @Override
     public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
-        return new SortByDocWeight(subQuery, fieldName, scores);
+        return new SortByDocWeight(this, fieldName, scores, subQuery.createWeight(searcher, needsScores));
     }
 
     @Override

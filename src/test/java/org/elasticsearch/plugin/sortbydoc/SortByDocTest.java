@@ -19,10 +19,12 @@ import org.elasticsearch.node.internal.InternalSettingsPreparer;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.search.query.sortbydoc.SortByDocQueryBuilder;
 import org.elasticsearch.search.sort.SortOrder;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -31,16 +33,20 @@ import java.util.List;
 public class SortByDocTest {
     private ObjectMapper objectMapper = new ObjectMapper();
     final String index = "test_index";
-    private final Client client = newNode().client();
+    private Client client;
+    private Node node;
 
 
     @Before
-    public void clean() {
-        try {
-            DeleteIndexResponse delete = client.admin().indices().prepareDelete("_all").execute().actionGet();
-        } catch (IndexNotFoundException e) {
-            //ignore
-        }
+    public void prepare() {
+        node = newNode();
+        client = node.client();
+    }
+
+    @After
+    public void after() {
+        client.close();
+        node.close();
     }
 
 
@@ -183,8 +189,20 @@ public class SortByDocTest {
         }
     }
 
-
+    private static void deleteDir(File file) {
+        File[] contents = file.listFiles();
+        if (contents != null) {
+            for (File f : contents) {
+                deleteDir(f);
+            }
+        }
+        file.delete();
+    }
     private static Node newNode() {
+        File index = new File("/var/tmp/data/");
+        if (index.exists()) {
+            deleteDir(index);
+        }
         String name = "junit-sbd";
         Settings settings = Settings.settingsBuilder()
                 .put("http.enabled", false)

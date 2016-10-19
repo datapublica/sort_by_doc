@@ -9,6 +9,8 @@ import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
+import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.index.mapper.internal.UidFieldMapper;
 
 import java.io.IOException;
@@ -21,15 +23,19 @@ import java.util.Set;
  * 22/10/15, 14:55
  */
 public class SortByDocWeight extends Weight {
+    public static final ESLogger log = ESLoggerFactory.getLogger("weight");
+
     private final String fieldName;
+    private Weight weight;
     private Map<Term, Float> scores;
     private Query query;
 
-    public SortByDocWeight(Query query, String fieldName, Map<Term, Float> scores) {
+    public SortByDocWeight(Query query, String fieldName, Map<Term, Float> scores, Weight weight) {
         super(query);
         this.scores = scores;
         this.query = query;
         this.fieldName = fieldName;
+        this.weight = weight;
     }
 
     @Override
@@ -55,14 +61,15 @@ public class SortByDocWeight extends Weight {
 
     @Override
     public Scorer scorer(LeafReaderContext context) throws IOException {
-        // only score if parent document ie: context.docBaseInParent == 0
-        if (context.docBaseInParent == 0)
-            return new SortByDocScorer(getScores(context), DocIdSetIterator.all(context.reader().maxDoc()), this);
-        else
+        Scorer scorer = weight.scorer(context);
+        if (scorer == null) {
             return null;
+        }
+        return new SortByDocScorer(getScores(context), scorer.iterator(), this);
     }
 
     private Map<Integer, Float> getScores(LeafReaderContext context) throws IOException {
+        log.trace("[getScores] Content of the score table (size: "+this.scores.size()+")");
         Map<Integer, Float> scores = new HashMap<>();
         TermsEnum termsIterator = context.reader().fields().terms(UidFieldMapper.NAME).iterator();
 
@@ -73,10 +80,13 @@ public class SortByDocWeight extends Weight {
             }
 
             PostingsEnum postings = termsIterator.postings(null);
-            if (postings.nextDoc() == DocIdSetIterator.NO_MORE_DOCS)
+            if (postings.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) {
+                log.trace("[getScores] Could not find postings "+score.getKey().text());
                 continue;
+            }
             scores.put(postings.docID(), score.getValue());
         }
+        log.trace("[getScores] Content of the internal score table (size: "+scores.size()+") "+scores);
 
         return scores;
     }
