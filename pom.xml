@@ -4,7 +4,7 @@
     <groupId>org.elasticsearch</groupId>
     <artifactId>sort-by-doc</artifactId>
     <packaging>jar</packaging>
-    <version>0.0.14</version>
+    <version>0.0.15</version>
     <name>sort-by-doc</name>
     <properties>
         <elasticsearch.version>5.2.0</elasticsearch.version>
