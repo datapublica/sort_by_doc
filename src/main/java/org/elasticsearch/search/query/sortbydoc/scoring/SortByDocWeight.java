@@ -9,9 +9,7 @@ import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.ESLoggerFactory;
-import org.elasticsearch.index.mapper.internal.UidFieldMapper;
+import org.elasticsearch.index.mapper.UidFieldMapper;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -23,8 +21,7 @@ import java.util.Set;
  * 22/10/15, 14:55
  */
 public class SortByDocWeight extends Weight {
-    public static final ESLogger log = ESLoggerFactory.getLogger("weight");
-
+//    public static final Logger log = ESLoggerFactory.getLogger("weight");
     private final String fieldName;
     private Weight weight;
     private Map<Term, Float> scores;
@@ -69,7 +66,7 @@ public class SortByDocWeight extends Weight {
     }
 
     private Map<Integer, Float> getScores(LeafReaderContext context) throws IOException {
-        log.trace("[getScores] Content of the score table (size: "+this.scores.size()+")");
+//        log.trace("[getScores] Content of the score table (size: "+this.scores.size()+")");
         Map<Integer, Float> scores = new HashMap<>();
         TermsEnum termsIterator = context.reader().fields().terms(UidFieldMapper.NAME).iterator();
 
@@ -81,12 +78,12 @@ public class SortByDocWeight extends Weight {
 
             PostingsEnum postings = termsIterator.postings(null);
             if (postings.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) {
-                log.trace("[getScores] Could not find postings "+score.getKey().text());
+//                log.trace("[getScores] Could not find postings "+score.getKey().text());
                 continue;
             }
             scores.put(postings.docID(), score.getValue());
         }
-        log.trace("[getScores] Content of the internal score table (size: "+scores.size()+") "+scores);
+//        log.trace("[getScores] Content of the internal score table (size: "+scores.size()+") "+scores);
 
         return scores;
     }

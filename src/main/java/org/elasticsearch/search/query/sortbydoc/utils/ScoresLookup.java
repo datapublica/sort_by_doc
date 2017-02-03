@@ -16,10 +16,7 @@ public class ScoresLookup {
     private final String keyField;
     private final String valField;
 
-    @Nullable
-    private final QueryParseContext queryParseContext;
-
-    public ScoresLookup(String index, String type, String id, String routing, String objectPath, String keyField, String valField, @Nullable QueryParseContext queryParseContext) {
+    public ScoresLookup(String index, String type, String id, String routing, String objectPath, String keyField, String valField) {
         this.index = index;
         this.type = type;
         this.id = id;
@@ -27,7 +24,6 @@ public class ScoresLookup {
         this.objectPath = objectPath;
         this.keyField = keyField;
         this.valField = valField;
-        this.queryParseContext = queryParseContext;
     }
 
     public String getIndex() {
@@ -55,11 +51,6 @@ public class ScoresLookup {
     }
 
     public String getObjectPath() { return objectPath; }
-
-    @Nullable
-    public QueryParseContext getQueryParseContext() {
-        return queryParseContext;
-    }
 
     public String toString() {
         return index + "/" + type + "/" + id + "/" + keyField + "/" + valField;

@@ -3,8 +3,6 @@ package org.elasticsearch.search.query.sortbydoc.scoring;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.ESLoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
@@ -14,7 +12,7 @@ import java.util.Map;
  * 23/10/15, 15:18
  */
 class SortByDocScorer extends Scorer {
-    public static final ESLogger log = ESLoggerFactory.getLogger("scorer");
+//    public static final ESLogger log = ESLoggerFactory.getLogger("scorer");
     private final DocIdSetIterator iterator;
     private Map<Integer, Float> scores;
 
@@ -41,7 +39,7 @@ class SortByDocScorer extends Scorer {
                     if (scores.containsKey(docId)) {
                         return docId;
                     } else {
-                        log.trace("[nextdoc] Skipping document "+docId);
+//                        log.trace("[nextdoc] Skipping document "+docId);
                     }
                 }
                 return NO_MORE_DOCS;
@@ -55,7 +53,7 @@ class SortByDocScorer extends Scorer {
                     // then we go to the next valid document by calling nextDoc
                     if (scores.containsKey(docId))
                         return docId;
-                    log.trace("[advance] Skipping document "+docId);
+//                    log.trace("[advance] Skipping document "+docId);
                     return nextDoc();
                 }
                 return NO_MORE_DOCS;

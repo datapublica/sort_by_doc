@@ -2,8 +2,6 @@ package org.elasticsearch.plugin.sortbydoc;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.elasticsearch.Version;
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.ClusterName;
@@ -11,10 +9,10 @@ import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.concurrent.EsExecutors;
 import org.elasticsearch.env.Environment;
-import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.TermQueryBuilder;
 import org.elasticsearch.node.Node;
+import org.elasticsearch.node.NodeValidationException;
 import org.elasticsearch.node.internal.InternalSettingsPreparer;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.search.query.sortbydoc.SortByDocQueryBuilder;
@@ -23,13 +21,17 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+
+@RunWith(com.carrotsearch.randomizedtesting.RandomizedRunner.class)
 public class SortByDocTest {
     private ObjectMapper objectMapper = new ObjectMapper();
     final String index = "test_index";
@@ -38,13 +40,13 @@ public class SortByDocTest {
 
 
     @Before
-    public void prepare() {
+    public void prepare() throws NodeValidationException {
         node = newNode();
         client = node.client();
     }
 
     @After
-    public void after() {
+    public void after() throws IOException {
         client.close();
         node.close();
     }
@@ -198,33 +200,29 @@ public class SortByDocTest {
         }
         file.delete();
     }
-    private static Node newNode() {
+    private static Node newNode() throws NodeValidationException {
         File index = new File("/var/tmp/data/");
         if (index.exists()) {
             deleteDir(index);
         }
         String name = "junit-sbd";
-        Settings settings = Settings.settingsBuilder()
+        Settings settings = Settings.builder()
                 .put("http.enabled", false)
-                .put(IndexMetaData.SETTING_NUMBER_OF_SHARDS, 2)
-                .put(IndexMetaData.SETTING_NUMBER_OF_REPLICAS, 0)
-                .put(EsExecutors.PROCESSORS, 1) // limit the number of threads created
-                .put("config.ignore_system_properties", true) // make sure we get what we set :)
-                .put(ClusterName.SETTING, name)
                 .put("node.name", name)
                 .put("path.home", "/var/tmp")
+                .put("transport.type", "local")
                 .build();
         // We need a cluster name in dev otherwise, the system connects automatically to another ES with same name
-        Node node = new NodeWithPlugins(InternalSettingsPreparer.prepareEnvironment(settings, null), Version.CURRENT,
-                Collections.<Class<? extends Plugin>>singletonList(SortByDocPlugin.class));
+        Node node = new NodeWithPlugins(InternalSettingsPreparer.prepareEnvironment(settings, null),
+                Collections.singletonList(SortByDocPlugin.class));
         node.start();
         return node;
     }
 
 
     private static class NodeWithPlugins extends Node {
-        protected NodeWithPlugins(Environment environment, Version version, Collection<Class<? extends Plugin>> classpathPlugins) {
-            super(environment, version, classpathPlugins);
+        NodeWithPlugins(Environment environment, Collection<Class<? extends Plugin>> classpathPlugins) {
+            super(environment, classpathPlugins);
         }
     }
 

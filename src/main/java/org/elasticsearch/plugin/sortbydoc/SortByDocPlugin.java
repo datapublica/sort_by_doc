@@ -15,25 +15,18 @@
  */
 package org.elasticsearch.plugin.sortbydoc;
 
-import org.elasticsearch.indices.IndicesModule;
 import org.elasticsearch.plugins.Plugin;
+import org.elasticsearch.plugins.SearchPlugin;
+import org.elasticsearch.search.query.sortbydoc.SortByDocQueryBuilder;
 import org.elasticsearch.search.query.sortbydoc.SortByDocQueryParser;
 
+import java.util.Collections;
+import java.util.List;
 
-public class SortByDocPlugin extends Plugin {
 
+public class SortByDocPlugin extends Plugin implements SearchPlugin {
     @Override
-    public String name() {
-        return "sort-by-doc-plugin";
+    public List<QuerySpec<?>> getQueries() {
+        return Collections.singletonList(new QuerySpec<>(SortByDocQueryParser.NAME, SortByDocQueryBuilder::new, SortByDocQueryParser::fromXContent));
     }
-
-    @Override
-    public String description() {
-        return "Sort documents by the content of another document";
-    }
-
-    public void onModule(IndicesModule indicesModule) {
-        indicesModule.registerQueryParser(SortByDocQueryParser.class);
-    }
-
 }

@@ -2,16 +2,12 @@ package org.elasticsearch.search.query.sortbydoc;
 
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.ToStringUtils;
+import org.apache.lucene.search.*;
 import org.elasticsearch.search.query.sortbydoc.scoring.SortByDocWeight;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * samuel
@@ -41,9 +37,14 @@ public class SortByDocQuery extends Query {
         Query newSubQuery = subQuery.rewrite(reader);
         if (newSubQuery == subQuery)
             return this;
-        SortByDocQuery newQuery = (SortByDocQuery) this.clone();
+        SortByDocQuery newQuery = new SortByDocQuery(subQuery, fieldName, scores);
         newQuery.subQuery = newSubQuery;
         return newQuery;
+    }
+
+    @Override
+    public String toString(String s) {
+        return "sort-by-doc("+fieldName+")";
     }
 
     @Override
@@ -52,30 +53,17 @@ public class SortByDocQuery extends Query {
     }
 
     @Override
-    public String toString(String field) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("sort by doc (")
-                .append(subQuery.toString(field));
-        sb.append(ToStringUtils.boost(getBoost()));
-        return sb.toString();
-    }
-
-    @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass())
-            return false;
-        SortByDocQuery other = (SortByDocQuery) o;
-        if (!this.subQuery.equals(other.subQuery)) {
-            return false;
-        }
-        if (!this.scores.equals(other.scores)) {
-            return false;
-        }
-        return true;
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        SortByDocQuery that = (SortByDocQuery) o;
+        return Objects.equals(fieldName, that.fieldName) &&
+                Objects.equals(subQuery, that.subQuery) &&
+                Objects.equals(scores, that.scores);
     }
 
     @Override
     public int hashCode() {
-        return subQuery.hashCode() + 31 * scores.hashCode() ^ Float.floatToIntBits(getBoost());
+        return Objects.hash(fieldName, subQuery, scores);
     }
 }

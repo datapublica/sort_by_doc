@@ -12,7 +12,7 @@ import java.util.Map;
  */
 public class XContentGetScoreMap {
     public static Map<String, Float> extractMap(Object part, String rootPath, String key, String val) {
-        String[] pathElements = Strings.splitStringToArray(rootPath, '.');
+        String[] pathElements = Strings.splitStringByCommaToArray(rootPath);
 
         // We expect only one
         for (int i = 0; i < pathElements.length; ++i) {
