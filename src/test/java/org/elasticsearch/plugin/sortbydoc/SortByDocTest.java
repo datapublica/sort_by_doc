@@ -9,8 +9,10 @@ import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.concurrent.EsExecutors;
 import org.elasticsearch.env.Environment;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.TermQueryBuilder;
+import org.elasticsearch.indices.TermsLookup;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeValidationException;
 import org.elasticsearch.node.internal.InternalSettingsPreparer;
@@ -123,7 +125,9 @@ public class SortByDocTest {
         indexObject(new L("l1", Arrays.asList(new LE("1", 1), new LE("2", 3), new LE("3", 2))));
         client.admin().indices().prepareRefresh(index).execute().actionGet();
 
-        TermQueryBuilder onlyTypeA = QueryBuilders.termQuery("type", "a"); //
+        // lookup is useless here, it's just to have a more realistic case (with mandatory query rewrite)
+        BoolQueryBuilder onlyTypeA = QueryBuilders.boolQuery().must(QueryBuilders.termQuery("type", "a"))
+                .filter(QueryBuilders.termsLookupQuery("_id", new TermsLookup(index, L.TYPE, "l1", "elements.id"))); //
         final SearchResponse test = client.prepareSearch(index).setTypes(E.TYPE).setQuery(onlyTypeA).execute().actionGet();
         Assert.assertEquals(2, test.getHits().getTotalHits());
 

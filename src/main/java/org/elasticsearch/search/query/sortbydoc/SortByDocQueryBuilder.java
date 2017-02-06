@@ -1,5 +1,6 @@
 package org.elasticsearch.search.query.sortbydoc;
 
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
@@ -15,6 +16,7 @@ import org.elasticsearch.index.mapper.Uid;
 import org.elasticsearch.index.mapper.UidFieldMapper;
 import org.elasticsearch.index.query.AbstractQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryRewriteContext;
 import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.search.query.sortbydoc.utils.ScoresLookup;
 import org.elasticsearch.search.query.sortbydoc.utils.XContentGetScoreMap;
@@ -43,7 +45,6 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
     private QueryBuilder subQuery;
     private SortOrder sortOrder;
 
-
     public SortByDocQueryBuilder() {
     }
 
@@ -57,6 +58,18 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         this.scoreField = in.readString();
         this.sortOrder = SortOrder.values()[in.readInt()];
         subQuery = in.readNamedWriteable(QueryBuilder.class);
+    }
+
+    public SortByDocQueryBuilder(String lookupIndex, String lookupType, String lookupId, String lookupRouting, String rootPath, String idField, String scoreField, QueryBuilder subQuery, SortOrder sortOrder) {
+        this.lookupIndex = lookupIndex;
+        this.lookupType = lookupType;
+        this.lookupId = lookupId;
+        this.lookupRouting = lookupRouting;
+        this.rootPath = rootPath;
+        this.idField = idField;
+        this.scoreField = scoreField;
+        this.subQuery = subQuery;
+        this.sortOrder = sortOrder;
     }
 
     @Override
@@ -264,5 +277,13 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         Query filter = _idType.termsQuery(new ArrayList<>(scores.keySet()), context);
 
         return new SortByDocQuery(context.index().getName(), subQuery.toQuery(context), filter, termsScores);
+    }
+
+    @Override
+    protected QueryBuilder doRewrite(QueryRewriteContext queryShardContext) throws IOException {
+        QueryBuilder newSubQuery = subQuery.rewrite(queryShardContext);
+        if (newSubQuery == subQuery)
+            return this;
+        return new SortByDocQueryBuilder(lookupIndex, lookupType, lookupId, lookupRouting, rootPath, idField, scoreField, newSubQuery, sortOrder);
     }
 }
