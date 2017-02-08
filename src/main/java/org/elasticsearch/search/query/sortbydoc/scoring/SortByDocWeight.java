@@ -1,5 +1,6 @@
 package org.elasticsearch.search.query.sortbydoc.scoring;
 
+import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
@@ -9,6 +10,7 @@ import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
+import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.index.mapper.UidFieldMapper;
 
 import java.io.IOException;
@@ -21,17 +23,13 @@ import java.util.Set;
  * 22/10/15, 14:55
  */
 public class SortByDocWeight extends Weight {
-//    public static final Logger log = ESLoggerFactory.getLogger("weight");
-    private final String fieldName;
+    public static final Logger log = ESLoggerFactory.getLogger("weight");
     private Weight weight;
     private Map<Term, Float> scores;
-    private Query query;
 
-    public SortByDocWeight(Query query, String fieldName, Map<Term, Float> scores, Weight weight) {
+    public SortByDocWeight(Query query, Map<Term, Float> scores, Weight weight) {
         super(query);
         this.scores = scores;
-        this.query = query;
-        this.fieldName = fieldName;
         this.weight = weight;
     }
 
@@ -66,7 +64,7 @@ public class SortByDocWeight extends Weight {
     }
 
     private Map<Integer, Float> getScores(LeafReaderContext context) throws IOException {
-//        log.trace("[getScores] Content of the score table (size: "+this.scores.size()+")");
+        log.trace("[getScores] Content of the score table (size: "+this.scores.size()+")");
         Map<Integer, Float> scores = new HashMap<>();
         TermsEnum termsIterator = context.reader().fields().terms(UidFieldMapper.NAME).iterator();
 
@@ -78,12 +76,12 @@ public class SortByDocWeight extends Weight {
 
             PostingsEnum postings = termsIterator.postings(null);
             if (postings.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) {
-//                log.trace("[getScores] Could not find postings "+score.getKey().text());
+                log.trace("[getScores] Could not find postings "+score.getKey().text());
                 continue;
             }
             scores.put(postings.docID(), score.getValue());
         }
-//        log.trace("[getScores] Content of the internal score table (size: "+scores.size()+") "+scores);
+        log.trace("[getScores] Content of the internal score table (size: "+scores.size()+") "+scores);
 
         return scores;
     }

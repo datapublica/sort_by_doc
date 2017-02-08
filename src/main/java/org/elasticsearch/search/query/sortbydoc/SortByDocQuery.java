@@ -14,21 +14,18 @@ import java.util.Objects;
  * 22/10/15, 14:11
  */
 public class SortByDocQuery extends Query {
-    private final String fieldName;
     private Query subQuery;
     private Map<Term, Float> scores;
 
-    SortByDocQuery(String fieldName, Query subQuery, Query filter, Map<Term, Float> scores) {
-        this.fieldName = fieldName;
+    SortByDocQuery(Query subQuery, Query filter, Map<Term, Float> scores) {
         this.subQuery = new BooleanQuery.Builder()
                 .add(subQuery, BooleanClause.Occur.MUST)
                 .add(filter, BooleanClause.Occur.FILTER).build();
         this.scores = scores;
     }
 
-    private SortByDocQuery(Query subQuery, String fieldName, Map<Term, Float> scores) {
+    private SortByDocQuery(Query subQuery, Map<Term, Float> scores) {
         this.subQuery = subQuery;
-        this.fieldName = fieldName;
         this.scores = scores;
     }
 
@@ -37,19 +34,19 @@ public class SortByDocQuery extends Query {
         Query newSubQuery = subQuery.rewrite(reader);
         if (newSubQuery == subQuery)
             return this;
-        SortByDocQuery newQuery = new SortByDocQuery(subQuery, fieldName, scores);
+        SortByDocQuery newQuery = new SortByDocQuery(subQuery, scores);
         newQuery.subQuery = newSubQuery;
         return newQuery;
     }
 
     @Override
     public String toString(String s) {
-        return "sort-by-doc("+fieldName+")";
+        return "sort-by-doc";
     }
 
     @Override
     public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
-        return new SortByDocWeight(this, fieldName, scores, subQuery.createWeight(searcher, needsScores));
+        return new SortByDocWeight(this, scores, subQuery.createWeight(searcher, needsScores));
     }
 
     @Override
@@ -57,13 +54,12 @@ public class SortByDocQuery extends Query {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SortByDocQuery that = (SortByDocQuery) o;
-        return Objects.equals(fieldName, that.fieldName) &&
-                Objects.equals(subQuery, that.subQuery) &&
+        return Objects.equals(subQuery, that.subQuery) &&
                 Objects.equals(scores, that.scores);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fieldName, subQuery, scores);
+        return Objects.hash(subQuery, scores);
     }
 }

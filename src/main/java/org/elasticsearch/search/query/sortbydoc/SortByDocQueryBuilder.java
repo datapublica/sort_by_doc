@@ -1,6 +1,5 @@
 package org.elasticsearch.search.query.sortbydoc;
 
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
@@ -248,7 +247,6 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         // external lookup of score values
         ScoresLookup lookup = new ScoresLookup(lookupIndex, lookupType, lookupId, lookupRouting, rootPath, idField, scoreField);
         GetRequest request = new GetRequest(lookup.getIndex(), lookup.getType(), lookup.getId()).preference("_local").routing(lookup.getRouting());
-//        request.copyContextAndHeadersFrom(SearchContext.current());
 
         GetResponse getResponse = context.getClient().get(request).actionGet();
 
@@ -276,7 +274,7 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         // filter to only keep elements referenced in the lookup document
         Query filter = _idType.termsQuery(new ArrayList<>(scores.keySet()), context);
 
-        return new SortByDocQuery(context.index().getName(), subQuery.toQuery(context), filter, termsScores);
+        return new SortByDocQuery(subQuery.toQuery(context), filter, termsScores);
     }
 
     @Override
