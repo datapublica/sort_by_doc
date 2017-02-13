@@ -48,6 +48,7 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
     }
 
     public SortByDocQueryBuilder(StreamInput in) throws IOException {
+        super(in);
         this.lookupIndex = in.readString();
         this.lookupType = in.readString();
         this.lookupId = in.readString();
