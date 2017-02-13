@@ -57,7 +57,7 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         this.idField = in.readString();
         this.scoreField = in.readString();
         this.sortOrder = SortOrder.values()[in.readInt()];
-        subQuery = in.readNamedWriteable(QueryBuilder.class);
+        this.subQuery = in.readNamedWriteable(QueryBuilder.class);
     }
 
     public SortByDocQueryBuilder(String lookupIndex, String lookupType, String lookupId, String lookupRouting, String rootPath, String idField, String scoreField, QueryBuilder subQuery, SortOrder sortOrder) {
@@ -87,7 +87,7 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         out.writeString(idField);
         out.writeString(scoreField);
         out.writeInt(sortOrder.ordinal());
-        subQuery.writeTo(out);
+        out.writeNamedWriteable(subQuery);
     }
 
     /**
