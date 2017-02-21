@@ -10,7 +10,7 @@ This kind of query also enables you to add your own search criterias to furtherm
 1. Build this plugin:
 
         mvn clean compile test package 
-        PLUGIN_PATH=`pwd`/target/releases/sort-by-doc-0.0.1-SNAPSHOT.zip
+        PLUGIN_PATH=`pwd`/target/releases/sort-by-doc-0.0.19-SNAPSHOT.zip
 
 2. Install the PLUGIN
 
@@ -27,10 +27,13 @@ This kind of query also enables you to add your own search criterias to furtherm
 Usage
 ==========
 
-##### Version
+##### Recommended Versions
 
-ElasticSearch version 1.7.1
+ElasticSearch version 5.x: 0.0.19
 
+ElasticSearch version 2.x: 0.0.14
+
+ElasticSearch version 1.x: 0.0.8
 
 
 ##### Expected format of sort document
