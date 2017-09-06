@@ -29,7 +29,7 @@ Usage
 
 ##### Recommended Versions
 
-ElasticSearch version 5.x: 0.0.19
+ElasticSearch version 5.x: 0.0.20
 
 ElasticSearch version 2.x: 0.0.14
 
