@@ -1,17 +1,13 @@
 package org.elasticsearch.search.query.sortbydoc.scoring;
 
 import org.apache.logging.log4j.Logger;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
 import org.elasticsearch.common.logging.ESLoggerFactory;
-import org.elasticsearch.index.mapper.UidFieldMapper;
+import org.elasticsearch.common.lucene.uid.Versions;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -23,7 +19,7 @@ import java.util.Set;
  * 22/10/15, 14:55
  */
 public class SortByDocWeight extends Weight {
-    public static final Logger log = ESLoggerFactory.getLogger("weight");
+    public static final Logger log = ESLoggerFactory.getLogger(SortByDocWeight.class);
     private Weight weight;
     private Map<Term, Float> scores;
 
@@ -64,24 +60,18 @@ public class SortByDocWeight extends Weight {
     }
 
     private Map<Integer, Float> getScores(LeafReaderContext context) throws IOException {
-        log.trace("[getScores] Content of the score table (size: "+this.scores.size()+")");
+        log.trace("[getScores] Content of the score table (size: {})", this.scores.size());
         Map<Integer, Float> scores = new HashMap<>();
-        TermsEnum termsIterator = context.reader().fields().terms(UidFieldMapper.NAME).iterator();
-
+        LeafReader reader = context.reader();
         for (Map.Entry<Term, Float> score : this.scores.entrySet()) {
-            if (!termsIterator.seekExact(score.getKey().bytes())) {
-                // Term not found
+            Versions.DocIdAndVersion docIdAndVersion = Versions.loadDocIdAndVersion(reader, score.getKey());
+            if (docIdAndVersion == null) {
+                log.trace("[getScores] Could not find postings {}", score.getKey().text());
                 continue;
             }
-
-            PostingsEnum postings = termsIterator.postings(null);
-            if (postings.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) {
-                log.trace("[getScores] Could not find postings "+score.getKey().text());
-                continue;
-            }
-            scores.put(postings.docID(), score.getValue());
+            scores.put(docIdAndVersion.docId, score.getValue());
         }
-        log.trace("[getScores] Content of the internal score table (size: "+scores.size()+") "+scores);
+        log.trace("[getScores] Content of the internal score table (size: {}) {}",scores.size(), scores);
 
         return scores;
     }
