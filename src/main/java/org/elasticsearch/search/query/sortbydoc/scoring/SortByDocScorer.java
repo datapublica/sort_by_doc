@@ -41,7 +41,7 @@ public class SortByDocScorer extends Scorer {
                     if (scores.containsKey(docId)) {
                         return docId;
                     } else {
-                        log.info("[nextdoc] Skipping document {}", docId);
+                        log.trace("[nextdoc] Skipping document {}", docId);
                     }
                 }
                 return NO_MORE_DOCS;
@@ -55,7 +55,7 @@ public class SortByDocScorer extends Scorer {
                     // then we go to the next valid document by calling nextDoc
                     if (scores.containsKey(docId))
                         return docId;
-                    log.info("[advance] Skipping document {}", docId);
+                    log.trace("[advance] Skipping document {}", docId);
                     return nextDoc();
                 }
                 return NO_MORE_DOCS;

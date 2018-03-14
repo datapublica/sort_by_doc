@@ -52,19 +52,19 @@ public class SortByDocWeight extends Weight {
     }
 
     private Map<Integer, Float> getScores(LeafReaderContext context) throws IOException {
-        log.info("[getScores] Content of the score table (size: {}) {}", this.scores.size(), context.reader().terms(IdFieldMapper.NAME).getMin());
+        log.trace("[getScores] Content of the score table (size: {}) {}", this.scores.size(), context.reader().terms(IdFieldMapper.NAME).getMin());
         Map<Integer, Float> scores = new HashMap<>();
         LeafReader reader = context.reader();
         for (Map.Entry<BytesRef, Float> score : this.scores.entrySet()) {
             VersionsAndSeqNoResolver.DocIdAndVersion docIdAndVersion = VersionsAndSeqNoResolver.loadDocIdAndVersion(reader, new Term(IdFieldMapper.NAME, score.getKey()));
             if (docIdAndVersion == null) {
-                log.info("[getScores] Could not find postings {}", score.getKey());
+                log.trace("[getScores] Could not find postings {}", score.getKey());
                 continue;
             }
             scores.put(docIdAndVersion.docId, score.getValue());
         }
 
-        log.info("[getScores] Content of the internal score table (size: {}) {}",scores.size(), scores);
+        log.trace("[getScores] Content of the internal score table (size: {}) {}",scores.size(), scores);
 
         return scores;
     }
