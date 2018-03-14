@@ -4,20 +4,18 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.Version;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.common.lucene.BytesRefs;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.mapper.IdFieldMapper;
 import org.elasticsearch.index.mapper.MappedFieldType;
 import org.elasticsearch.index.mapper.Uid;
 import org.elasticsearch.index.mapper.UidFieldMapper;
-import org.elasticsearch.index.query.AbstractQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryRewriteContext;
-import org.elasticsearch.index.query.QueryShardContext;
-import org.elasticsearch.search.query.sortbydoc.utils.ScoresLookup;
+import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.query.sortbydoc.utils.XContentGetScoreMap;
 import org.elasticsearch.search.sort.SortOrder;
 
@@ -246,27 +244,31 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
 
 
         // external lookup of score values
-        ScoresLookup lookup = new ScoresLookup(lookupIndex, lookupType, lookupId, lookupRouting, rootPath, idField, scoreField);
-        GetRequest request = new GetRequest(lookup.getIndex(), lookup.getType(), lookup.getId()).preference("_local").routing(lookup.getRouting());
+        GetRequest request = new GetRequest(lookupIndex, lookupType, lookupId).preference("_local").routing(lookupRouting);
 
         GetResponse getResponse = context.getClient().get(request).actionGet();
 
         // ids => scores
         Map<String, Float> scores = new HashMap<>();
-        // Uid => scores
-        Map<Term, Float> termsScores = new HashMap<>();
+        // Encoded id => scores
+        Map<BytesRef, Float> termsScores = new HashMap<>();
 
         if (getResponse.isExists()) {
-            scores = XContentGetScoreMap.extractMap(getResponse.getSourceAsMap(), lookup.getObjectPath(), lookup.getKeyField(), lookup.getValField());
+            scores = XContentGetScoreMap.extractMap(getResponse.getSourceAsMap(), rootPath, idField, scoreField);
             if (scores == null) scores = new HashMap<>();
             final boolean isDesc = sortOrder.equals(SortOrder.DESC);
-            scores.entrySet().forEach(score -> {
-                BytesRef[] keyUids = Uid.createUidsForTypesAndId(context.queryTypes(), score.getKey());
-                for (BytesRef keyUid : keyUids) {
-                    Term key = new Term(UidFieldMapper.NAME, keyUid);
-                    termsScores.put(key, isDesc ? score.getValue() : -score.getValue());
+
+            final boolean is5xIndex = context.indexVersionCreated().before(Version.V_6_0_0_beta1);
+            for (Map.Entry<String, Float> score : scores.entrySet()) {
+                BytesRef id;
+                if (is5xIndex) {
+                    // 5.x index with index.mapping.single_type = true
+                    id = BytesRefs.toBytesRef(score.getKey());
+                } else {
+                    id = Uid.encodeId(score.getKey());
                 }
-            });
+                termsScores.put(id, isDesc ? score.getValue() : -score.getValue());
+            }
         }
         if (scores.isEmpty()) {
             return subQuery.toQuery(context);

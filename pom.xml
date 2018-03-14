@@ -4,18 +4,12 @@
     <groupId>org.elasticsearch</groupId>
     <artifactId>sort-by-doc</artifactId>
     <packaging>jar</packaging>
-    <version>0.0.21</version>
+    <version>0.0.22</version>
     <name>sort-by-doc</name>
     <properties>
-        <elasticsearch.version>5.2.0</elasticsearch.version>
+        <elasticsearch.version>6.2.2</elasticsearch.version>
     </properties>
     <dependencies>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch</artifactId>

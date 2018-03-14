@@ -20,12 +20,12 @@ package org.elasticsearch.search.query.sortbydoc;
 
 import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.xcontent.XContentParser;
-import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.search.sort.SortOrder;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Optional;
+
+import static org.elasticsearch.index.query.AbstractQueryBuilder.parseInnerQueryBuilder;
 
 
 /**
@@ -45,9 +45,7 @@ import java.util.Optional;
 public class SortByDocQueryParser {
     public static final String NAME = "sort_by_doc";
 
-    public static Optional<SortByDocQueryBuilder> fromXContent(QueryParseContext parseContext) throws IOException {
-        XContentParser parser = parseContext.parser();
-
+    public static SortByDocQueryBuilder fromXContent(XContentParser parser) throws IOException {
         String currentFieldName = null;
         SortByDocQueryBuilder builder = new SortByDocQueryBuilder();
 
@@ -58,7 +56,7 @@ public class SortByDocQueryParser {
                 currentFieldName = parser.currentName();
             } else if (token == XContentParser.Token.START_OBJECT) {
                 if ("query".equals(parser.currentName())) {
-                    builder.query(parseContext.parseInnerQueryBuilder().orElseThrow(IllegalStateException::new));
+                    builder.query(parseInnerQueryBuilder(parser));
                     continue;
                 }
             } else if (token.isValue()) {
@@ -90,7 +88,7 @@ public class SortByDocQueryParser {
         }
 
         builder.validate(str -> new ParsingException(parser.getTokenLocation(), str));
-        return Optional.of(builder);
+        return builder;
     }
 
 }

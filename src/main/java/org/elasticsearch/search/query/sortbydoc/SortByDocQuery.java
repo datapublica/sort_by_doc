@@ -3,6 +3,7 @@ package org.elasticsearch.search.query.sortbydoc;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
+import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.search.query.sortbydoc.scoring.SortByDocWeight;
 
 import java.io.IOException;
@@ -15,16 +16,16 @@ import java.util.Objects;
  */
 public class SortByDocQuery extends Query {
     private Query subQuery;
-    private Map<Term, Float> scores;
+    private Map<BytesRef, Float> scores;
 
-    SortByDocQuery(Query subQuery, Query filter, Map<Term, Float> scores) {
+    SortByDocQuery(Query subQuery, Query filter, Map<BytesRef, Float> scores) {
         this.subQuery = new BooleanQuery.Builder()
                 .add(subQuery, BooleanClause.Occur.MUST)
                 .add(filter, BooleanClause.Occur.FILTER).build();
         this.scores = scores;
     }
 
-    private SortByDocQuery(Query subQuery, Map<Term, Float> scores) {
+    private SortByDocQuery(Query subQuery, Map<BytesRef, Float> scores) {
         this.subQuery = subQuery;
         this.scores = scores;
     }
@@ -45,8 +46,8 @@ public class SortByDocQuery extends Query {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
-        return new SortByDocWeight(this, scores, subQuery.createWeight(searcher, needsScores));
+    public Weight createWeight(IndexSearcher searcher, boolean needsScores, float boost) throws IOException {
+        return new SortByDocWeight(this, scores, searcher, subQuery.createWeight(searcher, needsScores, boost));
     }
 
     @Override
