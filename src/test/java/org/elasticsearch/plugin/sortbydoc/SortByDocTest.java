@@ -21,16 +21,12 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 
-@RunWith(com.carrotsearch.randomizedtesting.RandomizedRunner.class)
 public class SortByDocTest {
     private ObjectMapper objectMapper = new ObjectMapper();
     final String indexE = "test_index_e";

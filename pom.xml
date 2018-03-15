@@ -21,6 +21,12 @@
             <artifactId>framework</artifactId>
             <version>${elasticsearch.version}</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.carrotsearch.randomizedtesting</groupId>
+                    <artifactId>randomizedtesting-runner</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
