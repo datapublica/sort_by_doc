@@ -114,6 +114,26 @@ public class SortByDocTest {
                 .scoreField("score");
         final SearchResponse test4 = client.prepareSearch(index).setTypes(E.TYPE).setQuery(builder).execute().actionGet();
         Assert.assertEquals(1, test4.getHits().getTotalHits());
+
+        // Sort by doc on score ASC with score restriction
+        builder = new SortByDocQueryBuilder()
+                .query(QueryBuilders.matchAllQuery())
+                .lookupIndex(index)
+                .lookupType(L.TYPE)
+                .lookupId("l1")
+                .idField("id")
+                .sortOrder(SortOrder.ASC)
+                .rootPath("elements")
+                .scoreField("score")
+                .minScore(2.0f)
+                .maxScore(3.0f);
+
+        final SearchResponse test5 = client.prepareSearch(index).setTypes(E.TYPE).setQuery(builder).execute().actionGet();
+        Assert.assertEquals(2, test5.getHits().getTotalHits());
+
+        Assert.assertEquals("3", test5.getHits().getHits()[0].getSource().get("id"));
+        Assert.assertEquals("2", test5.getHits().getHits()[1].getSource().get("id"));
+
     }
 
 

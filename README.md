@@ -60,6 +60,8 @@ These objects must contains two fields: an id and a score.
 * root - The path to the list of objets
 * id - the field name of document ids in the objects
 * score - the field name of score values in the objects
+* min_score - the minimum score (inclusive) to restrict the selection to
+* max_score - the maximum score (inclusive) to restrict the selection to
 
 
 

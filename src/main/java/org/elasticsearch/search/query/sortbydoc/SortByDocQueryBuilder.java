@@ -41,6 +41,8 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
     private String rootPath;
     private String idField;
     private String scoreField;
+    private Float minScore;
+    private Float maxScore;
     private QueryBuilder subQuery;
     private SortOrder sortOrder;
 
@@ -58,9 +60,11 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         this.scoreField = in.readString();
         this.sortOrder = SortOrder.values()[in.readInt()];
         this.subQuery = in.readNamedWriteable(QueryBuilder.class);
+        this.minScore = in.readOptionalFloat();
+        this.maxScore = in.readOptionalFloat();
     }
 
-    public SortByDocQueryBuilder(String lookupIndex, String lookupType, String lookupId, String lookupRouting, String rootPath, String idField, String scoreField, QueryBuilder subQuery, SortOrder sortOrder) {
+    public SortByDocQueryBuilder(String lookupIndex, String lookupType, String lookupId, String lookupRouting, String rootPath, String idField, String scoreField, QueryBuilder subQuery, SortOrder sortOrder, Float minScore, Float maxScore) {
         this.lookupIndex = lookupIndex;
         this.lookupType = lookupType;
         this.lookupId = lookupId;
@@ -70,6 +74,8 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         this.scoreField = scoreField;
         this.subQuery = subQuery;
         this.sortOrder = sortOrder;
+        this.minScore = minScore;
+        this.maxScore = maxScore;
     }
 
     @Override
@@ -88,6 +94,8 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         out.writeString(scoreField);
         out.writeInt(sortOrder.ordinal());
         out.writeNamedWriteable(subQuery);
+        out.writeOptionalFloat(minScore);
+        out.writeOptionalFloat(maxScore);
     }
 
     /**
@@ -162,6 +170,22 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         return this;
     }
 
+    /**
+     * Sets the minimum score (inclusive) to select
+     */
+    public SortByDocQueryBuilder minScore(Float minScore) {
+        this.minScore = minScore;
+        return this;
+    }
+
+    /**
+     * Sets the minimum score (inclusive) to select
+     */
+    public SortByDocQueryBuilder maxScore(Float maxScore) {
+        this.maxScore = maxScore;
+        return this;
+    }
+
     public void validate(Function<String, ElasticsearchException> exceptionProvider) throws IOException {
         if (lookupType == null) {
             throw exceptionProvider.apply("[sort_by_doc] query lookup element requires specifying the type");
@@ -202,12 +226,14 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
                 Objects.equals(idField, that.idField) &&
                 Objects.equals(scoreField, that.scoreField) &&
                 Objects.equals(subQuery, that.subQuery) &&
+                Objects.equals(minScore, that.minScore) &&
+                Objects.equals(maxScore, that.maxScore) &&
                 sortOrder == that.sortOrder;
     }
 
     @Override
     protected int doHashCode() {
-        return Objects.hash(lookupIndex, lookupType, lookupId, lookupRouting, rootPath, idField, scoreField, subQuery, sortOrder);
+        return Objects.hash(lookupIndex, lookupType, lookupId, lookupRouting, rootPath, idField, scoreField, subQuery, sortOrder, minScore, maxScore);
     }
 
     @Override
@@ -232,6 +258,8 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         builder.field("id", idField);
         builder.field("score", scoreField);
         builder.field("sort_order", sortOrder.name());
+        builder.field("min_score", minScore);
+        builder.field("max_score", maxScore);
         printBoostAndQueryName(builder);
         builder.endObject();
     }
@@ -264,7 +292,14 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
                 BytesRef[] keyUids = Uid.createUidsForTypesAndId(context.queryTypes(), score.getKey());
                 for (BytesRef keyUid : keyUids) {
                     Term key = new Term(UidFieldMapper.NAME, keyUid);
-                    termsScores.put(key, isDesc ? score.getValue() : -score.getValue());
+                    float scoreValue = score.getValue();
+                    if (minScore != null && scoreValue < minScore) {
+                        continue;
+                    }
+                    if (maxScore != null && scoreValue > maxScore) {
+                        continue;
+                    }
+                    termsScores.put(key, isDesc ? scoreValue : -scoreValue);
                 }
             });
         }
@@ -283,6 +318,6 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         QueryBuilder newSubQuery = subQuery.rewrite(queryShardContext);
         if (newSubQuery == subQuery)
             return this;
-        return new SortByDocQueryBuilder(lookupIndex, lookupType, lookupId, lookupRouting, rootPath, idField, scoreField, newSubQuery, sortOrder);
+        return new SortByDocQueryBuilder(lookupIndex, lookupType, lookupId, lookupRouting, rootPath, idField, scoreField, newSubQuery, sortOrder, minScore, maxScore);
     }
 }
