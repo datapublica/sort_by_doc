@@ -1,8 +1,8 @@
 package org.elasticsearch.search.query.sortbydoc.utils;
 
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.logging.ESLoggerFactory;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -16,7 +16,7 @@ import java.util.Map;
  * 22/10/15, 18:56
  */
 public class XContentGetScoreMap {
-    public static final Logger log = ESLoggerFactory.getLogger(XContentGetScoreMap.class);
+    private static final Logger log = LogManager.getLogger(XContentGetScoreMap.class);
     public static Map<String, Float> extractMap(Object part, String rootPath, String key, String val) {
         String[] pathElements = Strings.splitStringByCommaToArray(rootPath);
 
@@ -42,7 +42,7 @@ public class XContentGetScoreMap {
             Object itemKey = item.get(key);
             Object itemVal = item.get(val);
 
-            if ((itemKey != null && itemKey instanceof String)) {
+            if (itemKey instanceof String) {
                 if (itemVal == null) {
                     log.trace("Invalid value: null found");
                     values.put((String) itemKey, -Float.MAX_VALUE);

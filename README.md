@@ -29,6 +29,8 @@ Usage
 
 ##### Recommended Versions
 
+ElasticSearch version 7.x: 0.0.23
+
 ElasticSearch version 6.x: 0.0.22
 
 ElasticSearch version 5.x: 0.0.21

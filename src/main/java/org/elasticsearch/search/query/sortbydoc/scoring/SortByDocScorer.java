@@ -1,12 +1,13 @@
 package org.elasticsearch.search.query.sortbydoc.scoring;
 
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
-import org.elasticsearch.common.logging.ESLoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -14,14 +15,18 @@ import java.util.Map;
  * 23/10/15, 15:18
  */
 public class SortByDocScorer extends Scorer {
-    public static final Logger log = ESLoggerFactory.getLogger(SortByDocScorer.class);
+    private static final Logger log = LogManager.getLogger(SortByDocScorer.class);
     private final DocIdSetIterator iterator;
     private Map<Integer, Float> scores;
+    private float max;
 
-    public SortByDocScorer(Map<Integer, Float> scores, DocIdSetIterator iterator, Weight weight) {
+    SortByDocScorer(Map<Integer, Float> scores, DocIdSetIterator iterator, Weight weight) {
         super(weight);
         this.scores = scores;
         this.iterator = iterator;
+        if (!scores.isEmpty()) {
+            max = Collections.max(scores.values());
+        }
     }
 
     @Override
@@ -69,12 +74,17 @@ public class SortByDocScorer extends Scorer {
     }
 
     @Override
+    public float getMaxScore(int i) {
+        return max;
+    }
+
+    @Override
     public int docID() {
         return iterator.docID();
     }
 
     @Override
-    public float score() throws IOException {
+    public float score() {
         Float value = scores.get(docID());
         return value == null ? 0 : value;
     }

@@ -1,7 +1,6 @@
 package org.elasticsearch.search.query.sortbydoc;
 
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.search.query.sortbydoc.scoring.SortByDocWeight;
@@ -46,8 +45,8 @@ public class SortByDocQuery extends Query {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, boolean needsScores, float boost) throws IOException {
-        return new SortByDocWeight(this, scores, searcher, subQuery.createWeight(searcher, needsScores, boost));
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+        return new SortByDocWeight(this, scores, subQuery.createWeight(searcher, scoreMode, boost));
     }
 
     @Override

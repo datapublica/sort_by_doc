@@ -1,13 +1,14 @@
 package org.elasticsearch.search.query.sortbydoc.scoring;
 
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.BytesRef;
-import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.lucene.uid.VersionsAndSeqNoResolver;
 import org.elasticsearch.index.mapper.IdFieldMapper;
-import org.elasticsearch.index.mapper.UidFieldMapper;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -19,15 +20,13 @@ import java.util.Set;
  * 22/10/15, 14:55
  */
 public class SortByDocWeight extends Weight {
-    public static final Logger log = ESLoggerFactory.getLogger(SortByDocWeight.class);
-    private final IndexSearcher searcher;
+    private static final Logger log = LogManager.getLogger(SortByDocWeight.class);
     private Weight weight;
     private Map<BytesRef, Float> scores;
 
-    public SortByDocWeight(Query query, Map<BytesRef, Float> scores, IndexSearcher searcher, Weight weight) {
+    public SortByDocWeight(Query query, Map<BytesRef, Float> scores, Weight weight) {
         super(query);
         this.scores = scores;
-        this.searcher = searcher;
         this.weight = weight;
     }
 
@@ -56,7 +55,7 @@ public class SortByDocWeight extends Weight {
         Map<Integer, Float> scores = new HashMap<>();
         LeafReader reader = context.reader();
         for (Map.Entry<BytesRef, Float> score : this.scores.entrySet()) {
-            VersionsAndSeqNoResolver.DocIdAndVersion docIdAndVersion = VersionsAndSeqNoResolver.loadDocIdAndVersion(reader, new Term(IdFieldMapper.NAME, score.getKey()));
+            VersionsAndSeqNoResolver.DocIdAndVersion docIdAndVersion = VersionsAndSeqNoResolver.loadDocIdAndVersion(reader, new Term(IdFieldMapper.NAME, score.getKey()), false);
             if (docIdAndVersion == null) {
                 log.trace("[getScores] Could not find postings {}", score.getKey());
                 continue;

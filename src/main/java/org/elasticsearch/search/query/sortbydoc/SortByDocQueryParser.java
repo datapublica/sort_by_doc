@@ -75,6 +75,10 @@ public class SortByDocQueryParser {
                     builder.scoreField(parser.text());
                 } else if ("routing".equals(currentFieldName)) {
                     builder.lookupRouting(parser.textOrNull());
+                } else if ("max_score".equals(currentFieldName)) {
+                    builder.minScore(parser.floatValue());
+                } else if ("min_score".equals(currentFieldName)) {
+                    builder.maxScore(parser.floatValue());
                 } else if ("sort_order".equals(currentFieldName)) {
                     try {
                         builder.sortOrder(SortOrder.valueOf(parser.text()));
