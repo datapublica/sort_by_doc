@@ -159,10 +159,10 @@ public class SortByDocTest extends ESIntegTestCase {
 
     public static class E {
         static final String TYPE = E.class.getSimpleName();
-        String id;
-        String type;
+        public String id;
+        public String type;
 
-        E(String id, String type) {
+        public E(String id, String type) {
             this.id = id;
             this.type = type;
         }
@@ -171,20 +171,20 @@ public class SortByDocTest extends ESIntegTestCase {
 
     public static class L {
         static final String TYPE = L.class.getSimpleName();
-        String id;
-        List<LE> elements;
+        public String id;
+        public List<LE> elements;
 
-        L(String id, List<LE> elements) {
+        public L(String id, List<LE> elements) {
             this.id = id;
             this.elements = elements;
         }
     }
 
     public static class LE {
-        String id;
-        double score;
+        public String id;
+        public double score;
 
-        LE(String id, double score) {
+        public LE(String id, double score) {
             this.id = id;
             this.score = score;
         }
