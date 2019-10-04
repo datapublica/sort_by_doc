@@ -77,9 +77,9 @@ public class SortByDocQueryParser {
                 } else if ("routing".equals(currentFieldName)) {
                     builder.lookupRouting(parser.textOrNull());
                 } else if ("max_score".equals(currentFieldName)) {
-                    builder.minScore(parser.floatValue());
-                } else if ("min_score".equals(currentFieldName)) {
                     builder.maxScore(parser.floatValue());
+                } else if ("min_score".equals(currentFieldName)) {
+                    builder.minScore(parser.floatValue());
                 } else if (AbstractQueryBuilder.NAME_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
                     builder.queryName(parser.text());
                 } else if (AbstractQueryBuilder.BOOST_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
