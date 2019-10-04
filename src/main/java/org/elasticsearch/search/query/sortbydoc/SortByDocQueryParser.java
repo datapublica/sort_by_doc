@@ -20,6 +20,7 @@ package org.elasticsearch.search.query.sortbydoc;
 
 import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.xcontent.XContentParser;
+import org.elasticsearch.index.query.AbstractQueryBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 
 import java.io.IOException;
@@ -59,7 +60,7 @@ public class SortByDocQueryParser {
                     builder.query(parseInnerQueryBuilder(parser));
                     continue;
                 }
-            } else if (token.isValue()) {
+            } else if (token.isValue() && currentFieldName != null) {
                 if (false) {
                 } else if ("index".equals(currentFieldName)) {
                     builder.lookupIndex(parser.text());
@@ -79,6 +80,10 @@ public class SortByDocQueryParser {
                     builder.minScore(parser.floatValue());
                 } else if ("min_score".equals(currentFieldName)) {
                     builder.maxScore(parser.floatValue());
+                } else if (AbstractQueryBuilder.NAME_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
+                    builder.queryName(parser.text());
+                } else if (AbstractQueryBuilder.BOOST_FIELD.match(currentFieldName, parser.getDeprecationHandler())) {
+                    builder.boost(parser.floatValue());
                 } else if ("sort_order".equals(currentFieldName)) {
                     try {
                         builder.sortOrder(SortOrder.valueOf(parser.text()));
