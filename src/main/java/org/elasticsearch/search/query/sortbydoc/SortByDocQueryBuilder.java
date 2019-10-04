@@ -1,6 +1,5 @@
 package org.elasticsearch.search.query.sortbydoc;
 
-import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.ElasticsearchException;
@@ -14,7 +13,10 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.mapper.IdFieldMapper;
 import org.elasticsearch.index.mapper.MappedFieldType;
 import org.elasticsearch.index.mapper.Uid;
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.AbstractQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryRewriteContext;
+import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.search.query.sortbydoc.utils.XContentGetScoreMap;
 import org.elasticsearch.search.sort.SortOrder;
 
@@ -29,9 +31,8 @@ import java.util.function.Function;
  * samuel
  * 19/11/15, 15:57
  */
-public class SortByDocQueryBuilder extends AbstractQueryBuilder {
+public class SortByDocQueryBuilder extends AbstractQueryBuilder<SortByDocQueryBuilder> {
     private String lookupIndex;
-    private String lookupType;
     private String lookupId;
     private String lookupRouting;
 
@@ -49,7 +50,6 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
     public SortByDocQueryBuilder(StreamInput in) throws IOException {
         super(in);
         this.lookupIndex = in.readString();
-        this.lookupType = in.readString();
         this.lookupId = in.readString();
         this.lookupRouting = in.readOptionalString();
         this.rootPath = in.readString();
@@ -61,9 +61,8 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         this.maxScore = in.readOptionalFloat();
     }
 
-    public SortByDocQueryBuilder(String lookupIndex, String lookupType, String lookupId, String lookupRouting, String rootPath, String idField, String scoreField, QueryBuilder subQuery, SortOrder sortOrder, Float minScore, Float maxScore) {
+    public SortByDocQueryBuilder(String lookupIndex, String lookupId, String lookupRouting, String rootPath, String idField, String scoreField, QueryBuilder subQuery, SortOrder sortOrder, Float minScore, Float maxScore) {
         this.lookupIndex = lookupIndex;
-        this.lookupType = lookupType;
         this.lookupId = lookupId;
         this.lookupRouting = lookupRouting;
         this.rootPath = rootPath;
@@ -83,7 +82,6 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
     @Override
     protected void doWriteTo(StreamOutput out) throws IOException {
         out.writeString(lookupIndex);
-        out.writeString(lookupType);
         out.writeString(lookupId);
         out.writeOptionalString(lookupRouting);
         out.writeString(rootPath);
@@ -116,14 +114,6 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
      */
     public SortByDocQueryBuilder lookupIndex(String lookupIndex) {
         this.lookupIndex = lookupIndex;
-        return this;
-    }
-
-    /**
-     * Sets the index type to lookup the terms from.
-     */
-    public SortByDocQueryBuilder lookupType(String lookupType) {
-        this.lookupType = lookupType;
         return this;
     }
 
@@ -183,10 +173,7 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         return this;
     }
 
-    public void validate(Function<String, ElasticsearchException> exceptionProvider) throws IOException {
-        if (lookupType == null) {
-            throw exceptionProvider.apply("[sort_by_doc] query lookup element requires specifying the type");
-        }
+    public void validate(Function<String, ElasticsearchException> exceptionProvider) {
         if (lookupId == null) {
             throw exceptionProvider.apply("[sort_by_doc] query lookup element requires specifying the doc_id");
         }
@@ -211,26 +198,24 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
     }
 
     @Override
-    protected boolean doEquals(AbstractQueryBuilder o) {
+    protected boolean doEquals(SortByDocQueryBuilder o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        SortByDocQueryBuilder that = (SortByDocQueryBuilder) o;
-        return Objects.equals(lookupIndex, that.lookupIndex) &&
-                Objects.equals(lookupType, that.lookupType) &&
-                Objects.equals(lookupId, that.lookupId) &&
-                Objects.equals(lookupRouting, that.lookupRouting) &&
-                Objects.equals(rootPath, that.rootPath) &&
-                Objects.equals(idField, that.idField) &&
-                Objects.equals(scoreField, that.scoreField) &&
-                Objects.equals(subQuery, that.subQuery) &&
-                Objects.equals(minScore, that.minScore) &&
-                Objects.equals(maxScore, that.maxScore) &&
-                sortOrder == that.sortOrder;
+        return Objects.equals(lookupIndex, o.lookupIndex) &&
+                Objects.equals(lookupId, o.lookupId) &&
+                Objects.equals(lookupRouting, o.lookupRouting) &&
+                Objects.equals(rootPath, o.rootPath) &&
+                Objects.equals(idField, o.idField) &&
+                Objects.equals(scoreField, o.scoreField) &&
+                Objects.equals(subQuery, o.subQuery) &&
+                Objects.equals(minScore, o.minScore) &&
+                Objects.equals(maxScore, o.maxScore) &&
+                sortOrder == o.sortOrder;
     }
 
     @Override
     protected int doHashCode() {
-        return Objects.hash(lookupIndex, lookupType, lookupId, lookupRouting, rootPath, idField, scoreField, subQuery, sortOrder, minScore, maxScore);
+        return Objects.hash(lookupIndex, lookupId, lookupRouting, rootPath, idField, scoreField, subQuery, sortOrder, minScore, maxScore);
     }
 
     @Override
@@ -240,7 +225,6 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         if (lookupIndex != null) {
             builder.field("index", lookupIndex);
         }
-        builder.field("type", lookupType);
         builder.field("doc_id", lookupId);
         if (lookupRouting != null) {
             builder.field("routing", lookupRouting);
@@ -271,7 +255,7 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
 
 
         // external lookup of score values
-        GetRequest request = new GetRequest(lookupIndex, lookupType, lookupId).preference("_local").routing(lookupRouting);
+        GetRequest request = new GetRequest(lookupIndex, lookupId).preference("_local").routing(lookupRouting);
         GetResponse getResponse = context.getClient().get(request).actionGet();
 
         // ids => scores
@@ -318,6 +302,6 @@ public class SortByDocQueryBuilder extends AbstractQueryBuilder {
         QueryBuilder newSubQuery = subQuery.rewrite(queryShardContext);
         if (newSubQuery == subQuery)
             return this;
-        return new SortByDocQueryBuilder(lookupIndex, lookupType, lookupId, lookupRouting, rootPath, idField, scoreField, newSubQuery, sortOrder, minScore, maxScore);
+        return new SortByDocQueryBuilder(lookupIndex, lookupId, lookupRouting, rootPath, idField, scoreField, newSubQuery, sortOrder, minScore, maxScore);
     }
 }

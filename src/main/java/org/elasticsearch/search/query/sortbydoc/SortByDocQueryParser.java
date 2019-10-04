@@ -65,7 +65,7 @@ public class SortByDocQueryParser {
                 } else if ("index".equals(currentFieldName)) {
                     builder.lookupIndex(parser.text());
                 } else if ("type".equals(currentFieldName)) {
-                    builder.lookupType(parser.text());
+                    // ignore
                 } else if ("doc_id".equals(currentFieldName)) {
                     builder.lookupId(parser.text());
                 } else if ("root".equals(currentFieldName)) {
